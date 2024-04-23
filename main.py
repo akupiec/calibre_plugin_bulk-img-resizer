@@ -8,13 +8,16 @@ from calibre.ebooks.oeb.base import JPEG_MIME, PNG_MIME, WEBP_MIME
 from calibre.gui2 import error_dialog
 
 from calibre.gui2.tweak_book.plugin import Tool
-from qt.core import QAction, QInputDialog, QProgressDialog, Qt, QTimer
+from calibre.ebooks.oeb.polish.replace import rename_files
+from qt.core import QAction, QInputDialog, QProgressDialog, Qt, QTimer, QMessageBox
 from PIL import Image
 import io
 import os
 
+from calibre_plugins.bulk_img_reducer.custom_dialog import CustomDialog
 
-def rescale_image(img_data, max_px_size, quality):
+
+def rescale_image(img_data, max_px_size, quality, webp):
     image = Image.open(io.BytesIO(img_data))
     w = float(image.size[0])
     h = float(image.size[1])
@@ -37,15 +40,19 @@ def rescale_image(img_data, max_px_size, quality):
 
     re_image = image.resize((int(new_w), int(new_h)), Image.Resampling.LANCZOS)
     buf = io.BytesIO()
-    if quality < 100:
-        re_image.save(buf, format=image.format, quality=quality)
+
+    if webp is True:
+        re_image.save(buf, format='webp', quality=quality)
     else:
-        re_image.save(buf, format=image.format)
+        re_image.save(buf, format=image.format, quality=quality)
+
     return buf.getvalue()
+
 
 def replace_extension(file_name, new_extension):
     base_name, _ = os.path.splitext(file_name)
     return base_name + new_extension
+
 
 class BulkImgReducer(Tool):
     #: Set this to a unique name it will be used as a key
@@ -60,6 +67,7 @@ class BulkImgReducer(Tool):
     RASTER_IMAGES = {JPEG_MIME, PNG_MIME, WEBP_MIME}
 
     def __init__(self):
+        self.config = None
         self.job_data = None
         self.pd_timer = QTimer()
 
@@ -76,37 +84,31 @@ class BulkImgReducer(Tool):
         return ac
 
     def ask_user(self):
-        max_px_side, ok = QInputDialog.getInt(
-            self.gui, 'Enter max resolution', 'Please indicate the maximum resolution for images (applied to the shorter side).',
-            value=800, min=200, max=4000
-        )
+        dialog = CustomDialog()
 
-        if not ok:
+        if dialog.exec_() != CustomDialog.Accepted:
             return
 
-        quality, ok = QInputDialog.getInt(
-            self.gui, 'Enter quality packer', 'Please indicate the quality for webp codec conversion (it is ok to keep it at 100%).',
-            value=100, min=50, max=100
-        )
+        self.config = dialog.max_resolution, dialog.quality, dialog.covert_to_webp
 
-        if not ok:
-            return
-
-        # Ensure any in progress editing the user is doing is present in the container
         self.boss.commit_all_editors_to_container()
-        self.mimify_images(max_px_side, quality)
-
-    def mimify_images(self, factor, quality):
         self.boss.add_savepoint('Before: Resizing images')
+        self.mimify_images()
+
+    def mimify_images(self):
 
         self.pd_timer.timeout.connect(self.do_one)
 
         container = self.current_container  # The book being edited as a container object
         images = self.get_images_from_collection(container)
         print('image_count', len(images))
+        if len(images) == 0:
+            dialog = QMessageBox()
+            dialog.setText('No images found!')
+            return
 
         progress = self.create_progres_dialog(len(images))
-        self.job_data = (images, len(images), progress, container, factor, quality)
+        self.job_data = (images, images.copy(), progress, container)
         self.pd_timer.start()
 
     def get_images_from_collection(self, container):
@@ -119,7 +121,7 @@ class BulkImgReducer(Tool):
         return images
 
     def create_progres_dialog(self, image_count):
-        progress = QProgressDialog('Resizing images...', _('&Stop'), 0, image_count, self.gui)
+        progress = QProgressDialog('Resizing images...', _('&Stop'), 0, image_count + 1, self.gui)
         progress.setWindowTitle('Resizing...')
         progress.setWindowModality(Qt.WindowModality.WindowModal)
         progress.setValue(0)
@@ -128,24 +130,39 @@ class BulkImgReducer(Tool):
 
     def do_one(self):
         try:
-            images, img_count, progress, container, factor, quality = self.job_data
+            images, all_images, progress, container = self.job_data
+            max_resolution, quality, covert_to_webp = self.config
             if len(images) == 0 or progress.wasCanceled():
                 self.pd_timer.stop()
                 self.do_end()
                 return
 
             name = images.pop()
-            new_image = rescale_image(container.parsed(name), factor, quality)
+            new_image = rescale_image(container.parsed(name), max_resolution, quality, covert_to_webp)
             container.replace(name, new_image)
-            index = img_count - len(images)
+            index = len(all_images) - len(images)
             progress.setValue(index)
         except Exception:
             import traceback
-            error_dialog(self.gui, _('Failed to resize images'), _('Failed to resize images, click "Show details" for more info'), det_msg=traceback.format_exc(), show=True)
+            error_dialog(self.gui, _('Failed to resize images'),
+                         _('Failed to resize images, click "Show details" for more info'),
+                         det_msg=traceback.format_exc(), show=True)
             self.boss.revert_requested(self.boss.global_undo.previous_container)
             self.pd_timer.stop()
 
     def do_end(self):
+        _, _, convert_to_webp = self.config
+        _, all_images, progress, container = self.job_data
+
+        if convert_to_webp is True:
+            progress.setWindowTitle('Renaming files...')
+            replace_map = {}
+            for name in all_images:
+                value = os.path.splitext(name)[0] + '.webp'
+                replace_map[name] = value
+            rename_files(container, replace_map)
+
+        progress.setValue(len(all_images) + 1)
+
         self.boss.show_current_diff()
         self.boss.apply_container_update_to_gui()
-
