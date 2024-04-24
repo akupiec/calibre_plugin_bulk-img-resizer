@@ -4,49 +4,18 @@
 __license__ = 'MIT'
 __copyright__ = '2024, Artur Kupiec'
 
-from calibre.ebooks.oeb.base import JPEG_MIME, PNG_MIME, WEBP_MIME
-from calibre.gui2 import error_dialog
 
+import os
+from calibre.gui2 import error_dialog
+from calibre.gui2.tweak_book import current_container
 from calibre.gui2.tweak_book.plugin import Tool
+
+from calibre.ebooks.oeb.base import JPEG_MIME, PNG_MIME, WEBP_MIME
 from calibre.ebooks.oeb.polish.replace import rename_files
 from qt.core import QAction, QInputDialog, QProgressDialog, Qt, QTimer, QMessageBox
-from PIL import Image
-import io
-import os
 
-from calibre_plugins.bulk_img_reducer.custom_dialog import CustomDialog
-
-
-def rescale_image(img_data, max_px_size, quality, webp):
-    image = Image.open(io.BytesIO(img_data))
-    w = float(image.size[0])
-    h = float(image.size[1])
-    if w < h:
-        if w > max_px_size:
-            new_w = max_px_size
-            scale = max_px_size / w
-            new_h = h * scale
-        else:
-            new_h = h
-            new_w = w
-    else:
-        if h > max_px_size:
-            new_h = max_px_size
-            scale = max_px_size / h
-            new_w = w * scale
-        else:
-            new_h = h
-            new_w = w
-
-    re_image = image.resize((int(new_w), int(new_h)), Image.Resampling.LANCZOS)
-    buf = io.BytesIO()
-
-    if webp is True:
-        re_image.save(buf, format='webp', quality=quality)
-    else:
-        re_image.save(buf, format=image.format, quality=quality)
-
-    return buf.getvalue()
+from calibre_plugins.bulk_img_resizer.config_dialog import ConfigDialog
+from calibre_plugins.bulk_img_resizer.image import compress_image
 
 
 def replace_extension(file_name, new_extension):
@@ -55,14 +24,10 @@ def replace_extension(file_name, new_extension):
 
 
 class BulkImgReducer(Tool):
-    #: Set this to a unique name it will be used as a key
-    name = 'bulk-img-reducer'
-
-    #: If True the user can choose to place this tool in the plugins toolbar
+    name = 'bulk-img-resizer'
     allowed_in_toolbar = True
-
-    #: If True the user can choose to place this tool in the plugins menu
     allowed_in_menu = True
+    default_shortcut = ('Ctrl+Shift+Alt+R',)
 
     RASTER_IMAGES = {JPEG_MIME, PNG_MIME, WEBP_MIME}
 
@@ -72,21 +37,19 @@ class BulkImgReducer(Tool):
         self.pd_timer = QTimer()
 
     def create_action(self, for_toolbar=True):
-        # Create an action, this will be added to the plugins toolbar and
-        # the plugins menu
-        ac = QAction(get_icons('images/icon.png'), 'Bulk image resize', self.gui)  # noqa
+        ac = QAction(get_icons('images/icon.png'), 'Bulk Image Resizer', self.gui)  # noqa
         if not for_toolbar:
-            # Register a keyboard shortcut for this toolbar action. We only
-            # register it for the action created for the menu, not the toolbar,
-            # to avoid a double trigger
-            self.register_shortcut(ac, 'bulk-img-reducer', default_keys=('Ctrl+Shift+Alt+D',))
+            self.register_shortcut(ac, self.name, default_keys=self.default_shortcut)
         ac.triggered.connect(self.ask_user)
         return ac
 
     def ask_user(self):
-        dialog = CustomDialog()
+        if not self.ensure_book(_('You must first open a book in order to compress images.')):
+            return
 
-        if dialog.exec_() != CustomDialog.Accepted:
+        dialog = ConfigDialog()
+
+        if dialog.exec_() != ConfigDialog.Accepted:
             return
 
         self.config = dialog.max_resolution, dialog.quality, dialog.covert_to_webp
@@ -96,12 +59,9 @@ class BulkImgReducer(Tool):
         self.mimify_images()
 
     def mimify_images(self):
-
-        self.pd_timer.timeout.connect(self.do_one)
-
         container = self.current_container  # The book being edited as a container object
         images = self.get_images_from_collection(container)
-        print('image_count', len(images))
+
         if len(images) == 0:
             dialog = QMessageBox()
             dialog.setText('No images found!')
@@ -109,13 +69,15 @@ class BulkImgReducer(Tool):
 
         progress = self.create_progres_dialog(len(images))
         self.job_data = (images, images.copy(), progress, container)
+
+        self.pd_timer.timeout.connect(self.do_one)
         self.pd_timer.start()
 
     def get_images_from_collection(self, container):
         images = []
         for name, media_type in container.mime_map.items():
             if media_type in self.RASTER_IMAGES:
-                print('files: ' + str(name) + ' mime types:' + str(media_type))
+                # print('files: ' + str(name) + ' mime types:' + str(media_type))
                 images.append(name)
 
         return images
@@ -138,7 +100,7 @@ class BulkImgReducer(Tool):
                 return
 
             name = images.pop()
-            new_image = rescale_image(container.parsed(name), max_resolution, quality, covert_to_webp)
+            new_image = compress_image(container.parsed(name), max_resolution, quality, covert_to_webp)
             container.replace(name, new_image)
             index = len(all_images) - len(images)
             progress.setValue(index)
@@ -166,3 +128,10 @@ class BulkImgReducer(Tool):
 
         self.boss.show_current_diff()
         self.boss.apply_container_update_to_gui()
+
+    def ensure_book(self, msg=None):
+        msg = msg or _('No book is currently open. You must first open a book.')
+        if current_container() is None:
+            error_dialog(self.gui, _('No book open'), msg, show=True)
+            return False
+        return True
