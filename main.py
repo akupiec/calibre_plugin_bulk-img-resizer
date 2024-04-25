@@ -14,7 +14,7 @@ from calibre.ebooks.oeb.base import JPEG_MIME, PNG_MIME, WEBP_MIME
 from calibre.ebooks.oeb.polish.replace import rename_files
 from qt.core import QAction, QInputDialog, QProgressDialog, Qt, QTimer, QMessageBox
 
-from calibre_plugins.bulk_img_resizer.config_dialog import ConfigDialog
+from calibre_plugins.bulk_img_resizer.ui import ConfigDialog
 from calibre_plugins.bulk_img_resizer.image import compress_image
 
 
@@ -52,7 +52,8 @@ class BulkImgReducer(Tool):
         if dialog.exec_() != ConfigDialog.Accepted:
             return
 
-        self.config = dialog.max_resolution, dialog.quality, dialog.covert_to_webp
+        self.config = dialog.max_resolution, dialog.quality, dialog.encoding_type
+        print('CONFIG', self.config)
 
         self.boss.commit_all_editors_to_container()
         self.boss.add_savepoint('Before: Resizing images')
@@ -93,14 +94,14 @@ class BulkImgReducer(Tool):
     def do_one(self):
         try:
             images, all_images, progress, container = self.job_data
-            max_resolution, quality, covert_to_webp = self.config
+            max_resolution, quality, encoding_type = self.config
             if len(images) == 0 or progress.wasCanceled():
                 self.pd_timer.stop()
                 self.do_end()
                 return
 
             name = images.pop()
-            new_image = compress_image(container.parsed(name), max_resolution, quality, covert_to_webp)
+            new_image = compress_image(container.parsed(name), max_resolution, quality, encoding_type)
             container.replace(name, new_image)
             index = len(all_images) - len(images)
             progress.setValue(index)
@@ -113,16 +114,25 @@ class BulkImgReducer(Tool):
             self.pd_timer.stop()
 
     def do_end(self):
-        _, _, convert_to_webp = self.config
+        _, _, encoding_type = self.config
         _, all_images, progress, container = self.job_data
 
-        if convert_to_webp is True:
-            progress.setWindowTitle('Renaming files...')
-            replace_map = {}
-            for name in all_images:
-                value = os.path.splitext(name)[0] + '.webp'
+        progress.setWindowTitle('Renaming files...')
+        replace_map = {}
+        for name in all_images:
+            if encoding_type == 'WebP':
+                value = replace_extension(name, '.webp')
+            elif encoding_type == 'JPEG':
+                value = replace_extension(name, '.jpg')
+            elif encoding_type == 'PNG':
+                value = replace_extension(name, '.png')
+            else:
+                break
+
+            if name != value:
                 replace_map[name] = value
-            rename_files(container, replace_map)
+
+        rename_files(container, replace_map)
 
         progress.setValue(len(all_images) + 1)
 

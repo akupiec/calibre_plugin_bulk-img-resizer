@@ -2,7 +2,7 @@ import io
 from PIL import Image
 
 
-def compress_image(img_data, max_px_size, quality, webp_conversion):
+def compress_image(img_data, max_px_size, quality, encoding_type):
     image = Image.open(io.BytesIO(img_data))
     w = float(image.size[0])
     h = float(image.size[1])
@@ -26,8 +26,12 @@ def compress_image(img_data, max_px_size, quality, webp_conversion):
     re_image = image.resize((int(new_w), int(new_h)), Image.Resampling.LANCZOS)
     buf = io.BytesIO()
 
-    if webp_conversion is True:
+    if encoding_type == 'WebP':
         re_image.save(buf, format='webp', quality=quality)
+    elif encoding_type == 'JPEG':
+        re_image.convert('RGB').save(buf, format='jpeg', quality=quality)
+    elif encoding_type == 'PNG':
+        re_image.save(buf, format='PNG', quality=quality)
     else:
         re_image.save(buf, format=image.format, quality=quality)
 

@@ -10,7 +10,7 @@ from calibre.customize import EditBookToolPlugin
 class BulkImgReducerPlugin(EditBookToolPlugin):
 
     name = 'Bulk img resizer'
-    version = (1, 0, 0)
+    version = (1, 1, 0)
     author = 'Artur Kupiec'
     supported_platforms = ['windows', 'osx', 'linux']
     description = 'Resize all images and keep them under specified resolution'
