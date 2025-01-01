@@ -6,11 +6,13 @@ __license__ = 'MIT'
 
 from calibre.customize import EditBookToolPlugin
 
+from calibre_plugins.bulk_img_resizer.__version__ import version_tuple
+
 
 class BulkImgReducerPlugin(EditBookToolPlugin):
 
     name = 'Bulk img resizer'
-    version = (1, 1, 0)
+    version = version_tuple
     author = 'Artur Kupiec'
     supported_platforms = ['windows', 'osx', 'linux']
     description = 'Resize all images and keep them under specified resolution'
