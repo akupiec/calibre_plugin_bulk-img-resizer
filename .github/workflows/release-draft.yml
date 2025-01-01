@@ -1,6 +1,9 @@
-name: Main
+name: Release version
 
 on: push
+
+permissions:
+  contents: write
 
 jobs:
   build:
