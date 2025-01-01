@@ -33,13 +33,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Generate Changelog
+        uses: TriPSs/conventional-changelog-action@v6
+        with:
+          output-file: ${{ github.workspace }}-CHANGELOG.txt
+
       - name: Build
         run: echo ${{ github.sha }} > Release.txt
 
       - name: Test
-        run: cat Release.txt
+        run: |
+          cat Release.txt
+          cat ${{ github.workspace }}-CHANGELOG.txt
 
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
+          body_path: ${{ github.workspace }}-CHANGELOG.txt
           files: Release.txt
