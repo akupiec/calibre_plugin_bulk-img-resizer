@@ -38,19 +38,22 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Generate Changelog
-        uses: TriPSs/conventional-changelog-action@v6
+        uses: TriPSs/conventional-changelog-action@v5
         id: changelog
         with:
+          github-token: ${{ secrets.github_token }}
           skip-commit: "true"
           skip-git-pull: "true"
           output-file: "false"
 
       - name: Build
-        run: echo ${{ github.sha }} > Release.txt
+        run: |
+          echo ${{ steps.changelog.outputs.clean_changelog }} > Release.txt
+          echo ${{ steps.changelog.outputs.tag }} > Release.txt
 
       - name: Test
         run: |
-          echo ${{ steps.changelog.outputs.clean_changelog }}
+          cat Release.txt
 
       - name: Release
         uses: softprops/action-gh-release@v2
