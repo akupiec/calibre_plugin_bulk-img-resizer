@@ -3,6 +3,8 @@ import re
 import sys
 import zipfile
 
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, parent_dir)
 import __version__
 
 
