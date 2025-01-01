@@ -3,7 +3,8 @@ import re
 import sys
 import zipfile
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, parent_dir)
 import __version__
 
 
@@ -44,7 +45,7 @@ def check_if_file_exists(filename):
 def generate_file_name():
     pattern = re.compile(r"plugin-import-name-(.*)\.txt")
 
-    for file_name in os.listdir('../'):
+    for file_name in os.listdir(parent_dir):
         match = pattern.match(file_name)
         if match:
             return '../out/' + match.group(1) + '_' + __version__.__version__ + '.zip'
@@ -55,10 +56,10 @@ files_to_zip = []
 ignored_stuff = ['.git', '.github', '.gitignore', '.idea', 'dev', 'out', '__pycache__']
 
 
-entries = os.listdir('../')
+entries = os.listdir(parent_dir)
 for entry in entries:
     if not ignored_stuff.__contains__(entry):
-        files_to_zip.append('../' + entry)
+        files_to_zip.append(parent_dir + '/' + entry)
 
 zip_filename = generate_file_name()
 check_if_file_exists(zip_filename)
