@@ -1,5 +1,5 @@
 Directory containing development tools
 
-`calibre_plugin_packer.py` - pack plugin to zip file ready to be shared
+`python calibre_plugin_packer.py` - pack plugin to zip file ready to be shared 
 
-`test-plugin.bat` - opens calibre with currently packed plugin preinstalled
+`test-plugin.bat` - opens calibre with currently packed plugin already preinstalled
