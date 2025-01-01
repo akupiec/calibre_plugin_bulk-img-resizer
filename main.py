@@ -4,9 +4,9 @@
 __license__ = 'MIT'
 __copyright__ = '2024, Artur Kupiec'
 
-
 import os
 from calibre.gui2 import error_dialog
+from calibre.gui2 import warning_dialog
 from calibre.gui2.tweak_book import current_container
 from calibre.gui2.tweak_book.plugin import Tool
 
@@ -92,26 +92,24 @@ class BulkImgReducer(Tool):
         return progress
 
     def do_one(self):
+        images, all_images, progress, container = self.job_data
+        max_resolution, quality, encoding_type = self.config
+        if len(images) == 0 or progress.wasCanceled():
+            self.pd_timer.stop()
+            self.do_end()
+            return
+        name = images.pop()
         try:
-            images, all_images, progress, container = self.job_data
-            max_resolution, quality, encoding_type = self.config
-            if len(images) == 0 or progress.wasCanceled():
-                self.pd_timer.stop()
-                self.do_end()
-                return
-
-            name = images.pop()
             new_image = compress_image(container.parsed(name), max_resolution, quality, encoding_type)
             container.replace(name, new_image)
-            index = len(all_images) - len(images)
-            progress.setValue(index)
         except Exception:
             import traceback
-            error_dialog(self.gui, _('Failed to resize images'),
-                         _('Failed to resize images, click "Show details" for more info'),
-                         det_msg=traceback.format_exc(), show=True)
-            self.boss.revert_requested(self.boss.global_undo.previous_container)
-            self.pd_timer.stop()
+            warning_dialog(self.gui,
+                           _('Image Resize Failed'),
+                           _(f'The image "{name}" could not be resized. It may be corrupted or in an unsupported format.'),
+                           det_msg=traceback.format_exc(), show=True)
+        index = len(all_images) - len(images)
+        progress.setValue(index)
 
     def do_end(self):
         _, _, encoding_type = self.config
