@@ -7,13 +7,17 @@ permissions:
   contents: read
 
 jobs:
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Run commitlint
+      uses: wagoid/commitlint-github-action@v6
+
   build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-
-    - name: Run commitlint
-      uses: wagoid/commitlint-github-action@v6
 
     - name: Set up Python 3.12
       uses: actions/setup-python@v3
