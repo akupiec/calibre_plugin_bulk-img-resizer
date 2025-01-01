@@ -27,6 +27,11 @@ jobs:
       contents: write
     needs: [build]
     steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.12"
       - name: Pack Plugin
         run: |
           python dev/calibre_plugin_packer.py
