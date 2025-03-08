@@ -3,6 +3,7 @@ import re
 import sys
 import zipfile
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import __version__
 
 
