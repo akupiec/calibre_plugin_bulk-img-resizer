@@ -1,6 +1,6 @@
 # Calibre Editor Plugin - Bulk Image Resizer
 
-![Static Badge](https://img.shields.io/badge/MobileRead-blue?style=flat&logo=readdotcv&cacheSeconds=120&link=https%3A%2F%2Fwww.mobileread.com%2Fforums%2Fshowthread.php%3Ft%3D360699)
+![Static Badge](https://img.shields.io/badge/MobileRead-blue?style=flat&logo=readdotcv&cacheSeconds=120&link=https://www.mobileread.com/forums/showthread.php?t=360699)
 
 The plugin boasts an aggressive size reduction feature, 
 which in rare cases can achieve reductions by a factor of 8. 
