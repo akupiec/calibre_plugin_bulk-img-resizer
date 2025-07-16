@@ -33,11 +33,14 @@ jobs:
         with:
           python-version: "3.12"
       - name: Pack Plugin
+        working-directory: dev
         run: |
-          python dev/calibre_plugin_packer.py
+          python calibre_plugin_packer.py
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          draft: true
-          files: out/*.zip
+          draft: false
+          make_latest: true
+          files: |
+            ./out/*.zip
