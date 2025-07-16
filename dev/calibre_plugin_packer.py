@@ -53,7 +53,7 @@ def generate_file_name():
 
 os.makedirs('../out', exist_ok=True)
 files_to_zip = []
-ignored_stuff = ['.git', '.github', '.gitignore', '.idea', 'dev', 'out', '__pycache__']
+ignored_stuff = ['.git', '.github', '.gitignore', '.idea', 'dev', 'out', '__pycache__', '.venv']
 
 
 entries = os.listdir(parent_dir)
