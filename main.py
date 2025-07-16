@@ -10,7 +10,7 @@ from calibre.gui2 import warning_dialog
 from calibre.gui2.tweak_book import current_container
 from calibre.gui2.tweak_book.plugin import Tool
 
-from calibre.ebooks.oeb.base import JPEG_MIME, PNG_MIME, WEBP_MIME
+from calibre.ebooks.oeb.base import JPEG_MIME, PNG_MIME, WEBP_MIME, GIF_MIME
 from calibre.ebooks.oeb.polish.replace import rename_files
 from qt.core import QAction, QInputDialog, QProgressDialog, Qt, QTimer, QMessageBox
 
@@ -29,7 +29,7 @@ class BulkImgReducer(Tool):
     allowed_in_menu = True
     default_shortcut = ('Ctrl+Shift+Alt+R',)
 
-    RASTER_IMAGES = {JPEG_MIME, PNG_MIME, WEBP_MIME}
+    RASTER_IMAGES = {JPEG_MIME, PNG_MIME, WEBP_MIME, GIF_MIME}
 
     def __init__(self):
         self.config = None
